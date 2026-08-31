@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Table Tennis</title>
+<style>
+  body {
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: #111;
+    font-family: Arial, sans-serif;
+    flex-direction: column;
+  }
+  h1 {
+    color: #fff;
+    margin-bottom: 10px;
+  }
+  canvas {
+    background: #000;
+    border: 4px solid #fff;
+    border-radius: 6px;
+  }
+  p {
+    color: #aaa;
+    margin-top: 10px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+  <h1>🏓 Table Tennis</h1>
+  <canvas id="game" width="600" height="400"></canvas>
+  <p>Move your paddle with mouse or touch. First to 5 wins!</p>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const paddleWidth = 10, paddleHeight = 80;
+let playerY = canvas.height / 2 - paddleHeight / 2;
+let aiY = canvas.height / 2 - paddleHeight / 2;
+
+let ballX = canvas.width / 2;
+let ballY = canvas.height / 2;
+let ballSpeedX = 4;
+let ballSpeedY = 4;
+const ballSize = 8;
+
+let playerScore = 0;
+let aiScore = 0;
+let gameOver = false;
+
+// Move paddle with mouse
+canvas.addEventListener("mousemove", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  playerY = e.clientY - rect.top - paddleHeight / 2;
+  clampPlayer();
+});
+
+// Move paddle with touch
+canvas.addEventListener("touchmove", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  playerY = e.touches[0].clientY - rect.top - paddleHeight / 2;
+  clampPlayer();
+  e.preventDefault();
+}, { passive: false });
+
+function clampPlayer() {
+  if (playerY < 0) playerY = 0;
+  if (playerY + paddleHeight > canvas.height) playerY = canvas.height - paddleHeight;
+}
+
+function resetBall() {
+  ballX = canvas.width / 2;
+  ballY = canvas.height / 2;
+  ballSpeedX = -ballSpeedX;
+  ballSpeedY = (Math.random() * 6) - 3;
+}
+
+function update() {
+  if (gameOver) return;
+
+  // Ball movement
+  ballX += ballSpeedX;
+  ballY += ballSpeedY;
+
+  // Bounce off top/bottom
+  if (ballY <= 0 || ballY >= canvas.height - ballSize) {
+    ballSpeedY = -ballSpeedY;
+  }
+
+  // Player paddle collision (left side)
+  if (ballX <= paddleWidth + 10 &&
+      ballY + ballSize >= playerY &&
+      ballY <= playerY + paddleHeight) {
+    ballSpeedX = -ballSpeedX;
+    ballX = paddleWidth + 10;
+  }
+
+  // AI paddle collision (right side)
+  if (ballX >= canvas.width - paddleWidth - 10 - ballSize &&
+      ballY + ballSize >= aiY &&
+      ballY <= aiY + paddleHeight) {
+    ballSpeedX = -ballSpeedX;
+    ballX = canvas.width - paddleWidth - 10 - ballSize;
+  }
+
+  // Score check
+  if (ballX < 0) {
+    aiScore++;
+    checkWin();
+    resetBall();
+  } else if (ballX > canvas.width) {
+    playerScore++;
+    checkWin();
+    resetBall();
+  }
+
+  // Simple AI movement (follows ball with slight delay)
+  const aiCenter = aiY + paddleHeight / 2;
+  if (aiCenter < ballY - 10) {
+    aiY += 3.5;
+  } else if (aiCenter > ballY + 10) {
+    aiY -= 3.5;
+  }
+  if (aiY < 0) aiY = 0;
+  if (aiY + paddleHeight > canvas.height) aiY = canvas.height - paddleHeight;
+}
+
+function checkWin() {
+  if (playerScore >= 5 || aiScore >= 5) {
+    gameOver = true;
+  }
+}
+
+function draw() {
+  // Clear
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Middle dashed line
+  ctx.strokeStyle = "#555";
+  ctx.setLineDash([8, 8]);
+  ctx.beginPath();
+  ctx.moveTo(canvas.width / 2, 0);
+  ctx.lineTo(canvas.width / 2, canvas.height);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Paddles
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(10, playerY, paddleWidth, paddleHeight);
+  ctx.fillRect(canvas.width - paddleWidth - 10, aiY, paddleWidth, paddleHeight);
+
+  // Ball
+  ctx.fillRect(ballX, ballY, ballSize, ballSize);
+
+  // Score
+  ctx.font = "24px Arial";
+  ctx.fillText(playerScore, canvas.width / 2 - 50, 40);
+  ctx.fillText(aiScore, canvas.width / 2 + 30, 40);
+
+  if (gameOver) {
+    ctx.font = "32px Arial";
+    ctx.fillStyle = "#0f0";
+    const winner = playerScore > aiScore ? "You Win!" : "AI Wins!";
+    ctx.fillText(winner, canvas.width / 2 - 80, canvas.height / 2);
+    ctx.font = "16px Arial";
+    ctx.fillStyle = "#fff";
+    ctx.fillText("Reload page to play again", canvas.width / 2 - 100, canvas.height / 2 + 30);
+  }
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
